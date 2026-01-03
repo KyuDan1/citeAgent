@@ -21,7 +21,8 @@
 
     "content_scripts": [{
         "js": [ "content.js" ],
-        "matches": [ "*://example.com/*" ]
+        "matches": [ "*://*.overleaf.com/*" ],
+        "run_at": "document_idle"
     }],
 
     "action": {
@@ -29,5 +30,6 @@
         "default_icon": "images/toolbar-icon.svg"
     },
 
-    "permissions": [ ]
+    "permissions": [ "activeTab", "storage" ],
+    "host_permissions": [ "*://*.overleaf.com/*" ]
 }

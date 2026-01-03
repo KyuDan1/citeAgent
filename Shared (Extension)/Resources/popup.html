@@ -3,9 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="popup.css">
-    <script type="module" src="popup.js"></script>
 </head>
 <body>
-    <strong>Hello World!</strong>
+    <div id="mainView">
+        <h1>🤖 CiteAgent</h1>
+
+        <div class="status">
+            <div class="status-dot" id="statusDot"></div>
+            <span class="status-text" id="statusText">Ready</span>
+        </div>
+
+        <button id="addCitationsBtn">Add Citations</button>
+        <button class="secondary" id="settingsBtn">Settings</button>
+
+        <div class="error" id="errorDiv"></div>
+
+        <div class="info">
+            Select text in Overleaf editor, then click "Add Citations" to automatically search papers and insert \cite{} tags.
+        </div>
+    </div>
+
+    <div id="settingsView" style="display: none;">
+        <div class="settings-header">
+            <button class="back-btn" id="backBtn">← Back</button>
+            <h1>⚙️ Settings</h1>
+        </div>
+
+        <div class="settings-section">
+            <label>Gemini API Key (Required)</label>
+            <input type="password" id="geminiApiKey" placeholder="Enter your Gemini API key">
+            <a href="https://aistudio.google.com/apikey" target="_blank" class="api-link">Get API Key →</a>
+        </div>
+
+        <div class="settings-section">
+            <label>Semantic Scholar API Key (Optional)</label>
+            <input type="password" id="semanticScholarApiKey" placeholder="Optional - for higher rate limits">
+            <a href="https://www.semanticscholar.org/product/api" target="_blank" class="api-link">Get API Key →</a>
+        </div>
+
+        <button id="saveSettingsBtn">Save Settings</button>
+
+        <div class="settings-info">
+            Your API keys are stored locally and only used for processing citations.
+        </div>
+    </div>
+
+    <script type="module" src="popup.js"></script>
 </body>
 </html>
