@@ -15,8 +15,7 @@
     },
 
     "background": {
-        "scripts": [ "background.js" ],
-        "type": "module"
+        "scripts": [ "background.js" ]
     },
 
     "content_scripts": [{
@@ -30,6 +29,6 @@
         "default_icon": "images/toolbar-icon.svg"
     },
 
-    "permissions": [ "activeTab", "storage" ],
+    "permissions": [ "activeTab", "storage", "nativeMessaging" ],
     "host_permissions": [ "*://*.overleaf.com/*" ]
 }

@@ -104,7 +104,7 @@ struct AppConfig: Codable {
             upstageApiKey: "",
             semanticScholarApiKey: "",
             llmProvider: "gemini",
-            geminiModel: "gemini-2.0-flash-exp",
+            geminiModel: "gemini-3-flash-preview",
             upstageModel: "solar-pro",
             temperature: 0.3,
             maxPapersPerSearch: 5,

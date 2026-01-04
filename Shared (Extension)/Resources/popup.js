@@ -44,7 +44,12 @@ function showError(message) {
 
 // Add Citations button click
 addCitationsBtn.addEventListener('click', async () => {
-    if (isProcessing) return;
+    console.log('🔴 [Popup] Add Citations button clicked');
+
+    if (isProcessing) {
+        console.log('🔴 [Popup] Already processing, ignoring click');
+        return;
+    }
 
     isProcessing = true;
     addCitationsBtn.disabled = true;
@@ -52,32 +57,47 @@ addCitationsBtn.addEventListener('click', async () => {
 
     try {
         // Check if API key is configured
+        console.log('🔴 [Popup] Checking API key...');
         if (!apiKeys.gemini) {
             throw new Error('Please configure your Gemini API key in Settings first');
         }
+        console.log('🔴 [Popup] API key present:', apiKeys.gemini.substring(0, 10) + '...');
 
         // Get active tab
+        console.log('🔴 [Popup] Getting active tab...');
         const tabs = await browser.tabs.query({ active: true, currentWindow: true });
         const activeTab = tabs[0];
+        console.log('🔴 [Popup] Active tab:', activeTab.id, activeTab.url);
 
         if (!activeTab.url || !activeTab.url.includes('overleaf.com')) {
             throw new Error('Please open an Overleaf project');
         }
 
-        // Get selected text from content script
+        // Get selected text from content script directly
         setStatus('processing', 'Reading selection...');
+        console.log('🔴 [Popup] Sending getSelectedText message directly to tab:', activeTab.id);
+
         const response = await browser.tabs.sendMessage(activeTab.id, {
             action: 'getSelectedText'
         });
+
+        console.log('🔴 [Popup] Received response:', response);
+
+        if (!response) {
+            throw new Error('Failed to communicate with Overleaf page. Please refresh the page and try again.');
+        }
 
         if (!response.success || !response.text) {
             throw new Error('No text selected. Please select text in the Overleaf editor.');
         }
 
-        console.log('[CiteAgent Popup] Selected text:', response.text.substring(0, 100) + '...');
+        console.log('🔴 [Popup] Selected text length:', response.text.length);
+        console.log('🔴 [Popup] Selected text preview:', response.text.substring(0, 100) + '...');
 
-        // Send to native app for processing
+        // Send to native app for processing directly
         setStatus('processing', 'Processing citations...');
+        console.log('🔴 [Popup] Sending processCitation to native app...');
+
         const result = await browser.runtime.sendNativeMessage({
             action: 'processCitation',
             text: response.text,
@@ -85,20 +105,24 @@ addCitationsBtn.addEventListener('click', async () => {
             semanticScholarApiKey: apiKeys.semanticScholar
         });
 
+        console.log('🔴 [Popup] Received result from native app:', result);
+
         if (!result.success) {
             throw new Error(result.error || 'Failed to process citations');
         }
 
-        // Replace text in editor
+        // Replace text in editor directly
         setStatus('processing', 'Updating editor...');
+        console.log('🔴 [Popup] Sending replaceSelectedText directly to tab');
         await browser.tabs.sendMessage(activeTab.id, {
             action: 'replaceSelectedText',
             text: result.modifiedText
         });
 
-        // Add BibTeX entries to .bib file
+        // Add BibTeX entries to .bib file directly
         if (result.bibtexEntries && result.bibtexEntries.length > 0) {
             setStatus('processing', 'Adding BibTeX entries...');
+            console.log('🔴 [Popup] Sending appendToBibFile directly to tab');
             await browser.tabs.sendMessage(activeTab.id, {
                 action: 'appendToBibFile',
                 entries: result.bibtexEntries,

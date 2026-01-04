@@ -38,15 +38,27 @@ class CitationAgentService {
     // MARK: - Gemini Integration
 
     private func processWithGemini(_ text: String, context: String?) async throws -> CitationResponse {
+        print("[Agent] === PROCESS WITH GEMINI ===")
+        print("[Agent] Text length: \(text.count) characters")
+        print("[Agent] Model: \(config.geminiModel)")
+
         // In a real implementation, you would use Google's Generative AI SDK for Swift
         // For now, we'll use URLSession to make direct API calls
 
         let apiKey = config.geminiApiKey
+        print("[Agent] API key length: \(apiKey.count) characters")
+
         guard !apiKey.isEmpty else {
+            print("[Agent] ERROR: API key is empty!")
             throw AgentError.missingApiKey("Gemini API key not configured")
         }
 
-        let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(config.geminiModel):generateContent?key=\(apiKey)")!
+        let urlString = "https://generativelanguage.googleapis.com/v1beta/models/\(config.geminiModel):generateContent?key=\(apiKey)"
+        print("[Agent] API URL: \(urlString.replacingOccurrences(of: apiKey, with: "***HIDDEN***"))")
+
+        guard let url = URL(string: urlString) else {
+            throw AgentError.apiError("Invalid URL for model: \(config.geminiModel)")
+        }
 
         let systemInstruction = buildSystemInstruction()
         let userPrompt = buildUserPrompt(text: text)
@@ -67,10 +79,31 @@ class CitationAgentService {
 
         print("[Agent] Sending request to Gemini API...")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let data: Data
+        let httpResponse: HTTPURLResponse
 
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw AgentError.apiError("Gemini API request failed")
+        do {
+            let (responseData, response) = try await URLSession.shared.data(for: request)
+            data = responseData
+
+            guard let http = response as? HTTPURLResponse else {
+                throw AgentError.apiError("Invalid response from server")
+            }
+            httpResponse = http
+
+            print("[Agent] HTTP Status: \(httpResponse.statusCode)")
+
+            if httpResponse.statusCode != 200 {
+                let errorBody = String(data: data, encoding: .utf8) ?? "No error details"
+                print("[Agent] Error response: \(errorBody)")
+                throw AgentError.apiError("Gemini API request failed (status \(httpResponse.statusCode)): \(errorBody)")
+            }
+        } catch let error as URLError {
+            print("[Agent] URLError: \(error.localizedDescription) (code: \(error.code.rawValue))")
+            throw AgentError.apiError("Network error: \(error.localizedDescription). Please check your internet connection and API key.")
+        } catch {
+            print("[Agent] Unexpected error: \(error)")
+            throw error
         }
 
         let geminiResponse = try JSONDecoder().decode(GeminiResponse.self, from: data)
