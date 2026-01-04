@@ -18,6 +18,7 @@ struct Paper: Codable, Identifiable {
     let doi: String?
     let arxivId: String?
     let abstract: String?
+    let venue: String?
 
     var id: String { paperId }
 
@@ -30,6 +31,7 @@ struct Paper: Codable, Identifiable {
         case doi
         case arxivId
         case abstract
+        case venue
     }
 
     // Generate BibTeX key (e.g., "vaswani2017attention")
@@ -51,7 +53,11 @@ struct Paper: Codable, Identifiable {
 
     // Generate BibTeX entry
     func bibtexEntry() -> String {
-        let key = bibtexKey()
+        return bibtexEntryWithKey(bibtexKey())
+    }
+
+    // Generate BibTeX entry with a custom key
+    func bibtexEntryWithKey(_ key: String) -> String {
         let authorsStr = authors.joined(separator: " and ")
 
         let entryType = arxivId != nil ? "article" : (doi != nil ? "article" : "misc")
@@ -97,6 +103,10 @@ struct AppConfig: Codable {
     var temperature: Double
     var maxPapersPerSearch: Int
     var minCitationCount: Int
+    var searchStrictness: Int // 0 = relaxed (more papers), 100 = strict (fewer, higher quality papers)
+    var citationStyle: String // "cite", "citep", "citet", "autocite", "parencite"
+    var citationDensity: Int // 0 = minimal (only key claims), 100 = comprehensive (cite everything)
+    var minYear: Int // 0 = all years, otherwise filter papers published after this year
 
     static var `default`: AppConfig {
         AppConfig(
@@ -104,12 +114,36 @@ struct AppConfig: Codable {
             upstageApiKey: "",
             semanticScholarApiKey: "",
             llmProvider: "gemini",
-            geminiModel: "gemini-2.0-flash-exp",
+            geminiModel: "gemini-3-flash-preview",
             upstageModel: "solar-pro",
             temperature: 0.3,
             maxPapersPerSearch: 5,
-            minCitationCount: 10
+            minCitationCount: 10,
+            searchStrictness: 30, // Default: slightly relaxed
+            citationStyle: "cite", // Default: \cite{}
+            citationDensity: 50, // Default: balanced
+            minYear: 0 // Default: all years
         )
+    }
+
+    // Computed properties based on strictness
+    var effectiveMinCitations: Int {
+        // 0 strictness = 0 min citations, 100 strictness = 50 min citations
+        return searchStrictness / 2
+    }
+
+    var effectiveMinYear: Int? {
+        // If minYear is set explicitly, use it
+        if minYear > 0 {
+            return minYear
+        }
+        // Otherwise, no year limit
+        return nil
+    }
+
+    var effectiveMatchThreshold: Int {
+        // 0 strictness = 0 (accept any), 100 strictness = 50 (need good match)
+        return searchStrictness / 2
     }
 
     // Save to UserDefaults

@@ -81,6 +81,89 @@ struct SettingsView: View {
                         .font(.caption)
                 }
 
+                // Citation Style Settings
+                Section(header: Text("Citation Style").font(.headline)) {
+                    // Citation Command Picker
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Citation Command")
+                        Picker("", selection: $viewModel.citationStyle) {
+                            Text("\\cite{}").tag("cite")
+                            Text("\\citep{}").tag("citep")
+                            Text("\\citet{}").tag("citet")
+                            Text("\\autocite{}").tag("autocite")
+                            Text("\\parencite{}").tag("parencite")
+                        }
+                        .pickerStyle(.segmented)
+
+                        Text(viewModel.citationStyleDescription)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Divider()
+                        .padding(.vertical, 4)
+
+                    // Citation Density Slider
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Citation Density")
+                            Spacer()
+                            Text(viewModel.densityLabel)
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: Binding(
+                            get: { Double(viewModel.citationDensity) },
+                            set: { viewModel.citationDensity = Int($0) }
+                        ), in: 0...100, step: 10)
+
+                        HStack {
+                            Text("Minimal")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text("Comprehensive")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Text(viewModel.densityDescription)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                    }
+                }
+
+                // Citation Search Settings
+                Section(header: Text("Paper Search").font(.headline)) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Search Strictness")
+                            Spacer()
+                            Text(viewModel.strictnessLabel)
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: Binding(
+                            get: { Double(viewModel.searchStrictness) },
+                            set: { viewModel.searchStrictness = Int($0) }
+                        ), in: 0...100, step: 10)
+
+                        HStack {
+                            Text("Relaxed")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text("Strict")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Text(viewModel.strictnessDescription)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 4)
+                    }
+                }
+
                 // Advanced Settings
                 Section(header: Text("Advanced").font(.headline)) {
                     HStack {
@@ -109,7 +192,7 @@ struct SettingsView: View {
             }
             .padding()
         }
-        .frame(width: 500, height: 600)
+        .frame(width: 520, height: 750)
         .onAppear {
             viewModel.loadSettings()
         }
@@ -129,6 +212,63 @@ class SettingsViewModel: ObservableObject {
     @Published var temperature = 0.3
     @Published var maxPapersPerSearch = 5
     @Published var minCitationCount = 10
+    @Published var searchStrictness = 30
+    @Published var citationStyle = "cite"
+    @Published var citationDensity = 50
+
+    // Citation Style descriptions
+    var citationStyleDescription: String {
+        switch citationStyle {
+        case "cite": return "Standard citation: (Author, Year) or [1]"
+        case "citep": return "Parenthetical: (Author, Year) - natbib package"
+        case "citet": return "Textual: Author (Year) - natbib package"
+        case "autocite": return "Auto-formatted citation - biblatex package"
+        case "parencite": return "Parenthetical citation - biblatex package"
+        default: return ""
+        }
+    }
+
+    // Citation Density labels and descriptions
+    var densityLabel: String {
+        switch citationDensity {
+        case 0..<20: return "Minimal"
+        case 20..<40: return "Light"
+        case 40..<60: return "Balanced"
+        case 60..<80: return "Thorough"
+        default: return "Comprehensive"
+        }
+    }
+
+    var densityDescription: String {
+        switch citationDensity {
+        case 0..<20: return "Only cite essential claims. Best for drafts or when you already have citations."
+        case 20..<40: return "Cite key claims and important methods. Skip well-known facts."
+        case 40..<60: return "Balanced approach: cite most claims and all model/method names."
+        case 60..<80: return "Thorough citations including supporting evidence and comparisons."
+        default: return "Comprehensive: cite everything that can be cited, including foundational concepts."
+        }
+    }
+
+    // Search Strictness labels and descriptions
+    var strictnessLabel: String {
+        switch searchStrictness {
+        case 0..<20: return "Very Relaxed"
+        case 20..<40: return "Relaxed"
+        case 40..<60: return "Balanced"
+        case 60..<80: return "Strict"
+        default: return "Very Strict"
+        }
+    }
+
+    var strictnessDescription: String {
+        switch searchStrictness {
+        case 0..<20: return "Accepts most papers regardless of venue or age. Good for niche topics."
+        case 20..<40: return "Prefers quality papers but includes older or less cited works."
+        case 40..<60: return "Balanced between quality and coverage."
+        case 60..<80: return "Prioritizes top venues and recent papers. May miss some relevant works."
+        default: return "Only top conferences and recent papers. Best for well-researched topics."
+        }
+    }
 
     func loadSettings() {
         let config = AppConfig.load()
@@ -141,6 +281,9 @@ class SettingsViewModel: ObservableObject {
         temperature = config.temperature
         maxPapersPerSearch = config.maxPapersPerSearch
         minCitationCount = config.minCitationCount
+        searchStrictness = config.searchStrictness
+        citationStyle = config.citationStyle
+        citationDensity = config.citationDensity
     }
 
     func saveSettings() {
@@ -153,7 +296,11 @@ class SettingsViewModel: ObservableObject {
             upstageModel: upstageModel,
             temperature: temperature,
             maxPapersPerSearch: maxPapersPerSearch,
-            minCitationCount: minCitationCount
+            minCitationCount: minCitationCount,
+            searchStrictness: searchStrictness,
+            citationStyle: citationStyle,
+            citationDensity: citationDensity,
+            minYear: 0
         )
         config.save()
         print("[Settings] Configuration saved")

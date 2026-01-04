@@ -90,6 +90,101 @@ button.secondary:hover {
     line-height: 1.5;
 }
 
+/* Quick Settings on Main View */
+.quick-settings {
+    background: #f5f5f7;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+}
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.setting-row:last-child {
+    margin-bottom: 0;
+}
+
+.setting-row label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #1d1d1f;
+    width: 50px;
+    flex-shrink: 0;
+}
+
+.setting-row select {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 12px;
+    border: 1px solid #d1d1d6;
+    border-radius: 6px;
+    background: white;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
+}
+
+.setting-row input[type="range"] {
+    flex: 1;
+    min-width: 0;
+    height: 4px;
+    -webkit-appearance: none;
+    background: #d1d1d6;
+    border-radius: 2px;
+}
+
+.setting-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #007aff;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.density-label {
+    font-size: 10px;
+    color: #86868b;
+    width: 75px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.year-prefix {
+    font-size: 11px;
+    color: #86868b;
+}
+
+.setting-row input[type="number"] {
+    width: 60px;
+    padding: 4px 6px;
+    font-size: 12px;
+    border: 1px solid #d1d1d6;
+    border-radius: 6px;
+    text-align: center;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
+}
+
+.setting-row input[type="number"]:focus {
+    outline: none;
+    border-color: #007aff;
+}
+
+.slider-label {
+    font-size: 12px;
+    color: #86868b;
+    margin-left: 8px;
+}
+
+.slider-hint {
+    font-size: 11px;
+    color: #86868b;
+    margin-top: 4px;
+}
+
 .settings-header {
     display: flex;
     align-items: center;
@@ -205,5 +300,44 @@ button.secondary:hover {
 
     .api-link {
         color: #0a84ff;
+    }
+
+    .quick-settings {
+        background: #2c2c2e;
+    }
+
+    .setting-row label {
+        color: #f5f5f7;
+    }
+
+    .setting-row select {
+        background: #3a3a3c;
+        border-color: #48484a;
+        color: #f5f5f7;
+    }
+
+    .setting-row input[type="range"] {
+        background: #48484a;
+    }
+
+    .setting-row input[type="range"]::-webkit-slider-thumb {
+        background: #0a84ff;
+    }
+
+    .density-label,
+    .slider-label,
+    .slider-hint,
+    .year-prefix {
+        color: #98989d;
+    }
+
+    .setting-row input[type="number"] {
+        background: #3a3a3c;
+        border-color: #48484a;
+        color: #f5f5f7;
+    }
+
+    .setting-row input[type="number"]:focus {
+        border-color: #0a84ff;
     }
 }

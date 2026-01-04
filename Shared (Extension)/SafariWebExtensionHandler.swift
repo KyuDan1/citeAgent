@@ -88,14 +88,19 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         os_log(.default, "Text length: %d characters", text.count)
         let contextStr = messageDict["context"] as? String
 
-        // Get API keys from message or load from defaults
+        // Get settings from message or load from defaults
         let geminiApiKey = messageDict["geminiApiKey"] as? String ?? ""
         let semanticScholarApiKey = messageDict["semanticScholarApiKey"] as? String ?? ""
+        let citationStyle = messageDict["citationStyle"] as? String ?? "cite"
+        let citationDensity = messageDict["citationDensity"] as? Int ?? 50
+        let searchStrictness = messageDict["searchStrictness"] as? Int ?? 30
+        let minYear = messageDict["minYear"] as? Int ?? 0
 
         os_log(.default, "Gemini API key from message: %@", geminiApiKey.isEmpty ? "EMPTY" : "PROVIDED (\(geminiApiKey.count) chars)")
         os_log(.default, "Semantic Scholar API key from message: %@", semanticScholarApiKey.isEmpty ? "EMPTY" : "PROVIDED")
+        os_log(.default, "Citation style: %@, density: %d, strictness: %d, minYear: %d", citationStyle, citationDensity, searchStrictness, minYear)
 
-        // Create config with API keys from message
+        // Create config with settings from message
         var config = AppConfig.load()
         os_log(.default, "Loaded config - LLM Provider: %@, Model: %@", config.llmProvider, config.geminiModel)
 
@@ -109,6 +114,12 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         if !semanticScholarApiKey.isEmpty {
             config.semanticScholarApiKey = semanticScholarApiKey
         }
+
+        // Apply citation settings from popup
+        config.citationStyle = citationStyle
+        config.citationDensity = citationDensity
+        config.searchStrictness = searchStrictness
+        config.minYear = minYear
 
         // Validate API key
         if config.geminiApiKey.isEmpty && config.upstageApiKey.isEmpty {

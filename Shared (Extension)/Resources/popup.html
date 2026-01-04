@@ -6,11 +6,35 @@
 </head>
 <body>
     <div id="mainView">
-        <h1>🤖 CiteAgent</h1>
+        <h1>KyuCite</h1>
 
         <div class="status">
             <div class="status-dot" id="statusDot"></div>
             <span class="status-text" id="statusText">Ready</span>
+        </div>
+
+        <!-- Citation Style Quick Settings -->
+        <div class="quick-settings">
+            <div class="setting-row">
+                <label>Command</label>
+                <select id="citationStyleSelect">
+                    <option value="cite">\cite{}</option>
+                    <option value="citep">\citep{}</option>
+                    <option value="citet">\citet{}</option>
+                    <option value="autocite">\autocite{}</option>
+                    <option value="parencite">\parencite{}</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Density</label>
+                <input type="range" id="citationDensitySlider" min="0" max="100" step="10" value="50">
+                <span class="density-label" id="densityLabel">Balanced</span>
+            </div>
+            <div class="setting-row">
+                <label>Year</label>
+                <span class="year-prefix">After</span>
+                <input type="number" id="minYearInput" min="1900" max="2030" value="2020" placeholder="2020">
+            </div>
         </div>
 
         <button id="addCitationsBtn">Add Citations</button>
@@ -18,8 +42,8 @@
 
         <div class="error" id="errorDiv"></div>
 
-        <div class="info">
-            Select text in Overleaf editor, then click "Add Citations" to automatically search papers and insert \cite{} tags.
+        <div class="info" id="infoText">
+            Select text in Overleaf editor, then click "Add Citations" to automatically search papers and insert citations.
         </div>
     </div>
 
@@ -39,6 +63,13 @@
             <label>Semantic Scholar API Key (Optional)</label>
             <input type="password" id="semanticScholarApiKey" placeholder="Optional - for higher rate limits">
             <a href="https://www.semanticscholar.org/product/api" target="_blank" class="api-link">Get API Key →</a>
+        </div>
+
+        <div class="settings-section">
+            <label>Search Strictness</label>
+            <input type="range" id="searchStrictnessSlider" min="0" max="100" step="10" value="30">
+            <span class="slider-label" id="strictnessLabel">Relaxed</span>
+            <div class="slider-hint">How strict to be when matching papers (relaxed = more papers)</div>
         </div>
 
         <button id="saveSettingsBtn">Save Settings</button>

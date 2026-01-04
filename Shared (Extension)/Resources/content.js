@@ -192,6 +192,55 @@ function setEditorContent(content) {
     return false;
 }
 
+// Append text to end of editor (better for large content)
+function appendToEditor(text) {
+    const editorObj = getOverleafEditor();
+    if (!editorObj) {
+        console.log("[CiteAgent] appendToEditor: No editor found");
+        return false;
+    }
+
+    try {
+        if (editorObj.type === 'codemirror6') {
+            const view = editorObj.editor;
+            const docLength = view.state.doc.length;
+            console.log("[CiteAgent] appendToEditor: Appending at position", docLength);
+            const transaction = view.state.update({
+                changes: { from: docLength, to: docLength, insert: text }
+            });
+            view.dispatch(transaction);
+            console.log("[CiteAgent] appendToEditor: Success");
+            return true;
+        } else if (editorObj.type === 'codemirror6-fallback') {
+            // Fallback: try to find editable element and append
+            console.log("[CiteAgent] appendToEditor: Using fallback method");
+            const cmContent = document.querySelector('.cm-content');
+            if (cmContent) {
+                // Move cursor to end and insert
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(cmContent);
+                range.collapse(false); // collapse to end
+                selection.removeAllRanges();
+                selection.addRange(range);
+                document.execCommand('insertText', false, text);
+                return true;
+            }
+            return false;
+        } else if (editorObj.type === 'ace') {
+            const session = editorObj.editor.session;
+            const lastRow = session.getLength();
+            session.insert({ row: lastRow, column: 0 }, text);
+            return true;
+        }
+    } catch (e) {
+        console.error("[CiteAgent] Error appending content:", e);
+        return false;
+    }
+
+    return false;
+}
+
 // Get selected text
 function getSelectedText() {
     const editorObj = getOverleafEditor();
@@ -320,6 +369,80 @@ function waitForEditor(timeout = 5000) {
     });
 }
 
+// Get current open file name from the tab or file tree
+function getCurrentFileName() {
+    // Method 1: Check active tab
+    const activeTab = document.querySelector('.nav-tabs .active .file-tree-item-name, .nav-tabs .active');
+    if (activeTab) {
+        const text = activeTab.textContent.trim();
+        if (text) return text;
+    }
+
+    // Method 2: Check selected item in file tree
+    const selected = document.querySelector('.file-tree .selected .entity-name, .file-tree-inner .selected .name');
+    if (selected) {
+        return selected.textContent.trim();
+    }
+
+    // Method 3: Check the highlighted/active entity
+    const highlighted = document.querySelector('.entity.active .entity-name, .file-tree-item.active .file-tree-item-name');
+    if (highlighted) {
+        return highlighted.textContent.trim();
+    }
+
+    return null;
+}
+
+// Wait for a specific file to be opened
+function waitForFile(filename, timeout = 5000) {
+    return new Promise((resolve) => {
+        const startTime = Date.now();
+        console.log(`🟢 [Content] waitForFile: Waiting for "${filename}" to open...`);
+
+        const checkInterval = setInterval(() => {
+            // Check if content looks like a bib file (contains @)
+            const editorObj = getOverleafEditor();
+            if (editorObj) {
+                let content = null;
+                if (editorObj.type === 'codemirror6' && editorObj.editor?.state?.doc) {
+                    content = editorObj.editor.state.doc.toString();
+                } else if (editorObj.type === 'codemirror6-fallback') {
+                    const cmContent = document.querySelector('.cm-content');
+                    if (cmContent) content = cmContent.textContent;
+                }
+
+                if (content !== null) {
+                    const isBibFile = filename.endsWith('.bib');
+                    const looksLikeBib = content.includes('@article') || content.includes('@misc') ||
+                                         content.includes('@book') || content.includes('@inproceedings') ||
+                                         content.trim() === '' || content.includes('@');
+
+                    console.log(`🟢 [Content] waitForFile: Content preview: "${content.substring(0, 50)}..."`);
+                    console.log(`🟢 [Content] waitForFile: isBibFile=${isBibFile}, looksLikeBib=${looksLikeBib}`);
+
+                    if (isBibFile && looksLikeBib) {
+                        clearInterval(checkInterval);
+                        console.log(`🟢 [Content] waitForFile: ✅ Bib file confirmed!`);
+                        resolve(true);
+                        return;
+                    } else if (!isBibFile) {
+                        // For non-bib files, just check editor is ready
+                        clearInterval(checkInterval);
+                        resolve(true);
+                        return;
+                    }
+                }
+            }
+
+            if (Date.now() - startTime > timeout) {
+                clearInterval(checkInterval);
+                console.log(`🟢 [Content] waitForFile: ❌ Timeout waiting for "${filename}"`);
+                resolve(false);
+            }
+        }, 200);
+    });
+}
+
 // Message listener from background script or native app
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     console.log("🟢 [Content] Received message:", request);
@@ -366,51 +489,80 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true; // Keep channel open for async response
 
     } else if (action === "appendToBibFile") {
-        // Switch to bib file, wait for editor, then append content
+        // Switch to bib file, wait for ACTUAL file switch, then append content ONE BY ONE
         const bibFilename = request.bibFilename || "mybib.bib";
-        switchToFile(bibFilename);
+        const entries = request.entries || [];
 
-        waitForEditor(3000).then(ready => {
+        console.log("🟢 [Content] appendToBibFile: Starting with", entries.length, "entries");
+        console.log("🟢 [Content] appendToBibFile: Switching to", bibFilename);
+
+        // First click the file
+        const clicked = switchToFile(bibFilename);
+        console.log("🟢 [Content] appendToBibFile: switchToFile returned", clicked);
+
+        // Wait a moment for the click to register, then wait for bib file content
+        setTimeout(async () => {
+            // Wait for the bib file to actually be loaded (check content)
+            const ready = await waitForFile(bibFilename, 5000);
+
             if (!ready) {
+                console.log("🟢 [Content] appendToBibFile: Primary bib file not ready, trying alternatives");
                 // Try alternative names
                 const alternatives = ["references.bib", "bibliography.bib", "refs.bib"];
                 let found = false;
                 for (let alt of alternatives) {
-                    if (alt !== bibFilename && switchToFile(alt)) {
-                        found = true;
-                        break;
+                    if (alt !== bibFilename) {
+                        console.log("🟢 [Content] appendToBibFile: Trying alternative", alt);
+                        switchToFile(alt);
+                        await new Promise(r => setTimeout(r, 500));
+                        const altReady = await waitForFile(alt, 3000);
+                        if (altReady) {
+                            found = true;
+                            console.log("🟢 [Content] appendToBibFile: Found alternative", alt);
+                            break;
+                        }
                     }
                 }
                 if (!found) {
-                    sendResponse({ success: false, error: "Could not find .bib file" });
+                    sendResponse({ success: false, error: "Could not find or open .bib file" });
                     return;
                 }
-                // Wait again after switching to alternative
-                return waitForEditor(3000);
-            }
-            return Promise.resolve(true);
-        }).then(ready => {
-            if (!ready) {
-                sendResponse({ success: false, error: "Editor not ready" });
-                return;
             }
 
-            const currentContent = getEditorContent();
-            if (currentContent === null) {
-                sendResponse({ success: false, error: "Could not read .bib file" });
-                return;
+            console.log("🟢 [Content] appendToBibFile: ✅ Bib file is now open, adding entries one by one");
+
+            // Add entries ONE BY ONE with small delays
+            let successCount = 0;
+            for (let i = 0; i < entries.length; i++) {
+                const entry = entries[i];
+                const textToAppend = "\n\n" + entry;
+
+                console.log(`🟢 [Content] appendToBibFile: Adding entry ${i + 1}/${entries.length}`);
+
+                const success = appendToEditor(textToAppend);
+                if (success) {
+                    successCount++;
+                    console.log(`🟢 [Content] appendToBibFile: Entry ${i + 1} added successfully`);
+                } else {
+                    console.log(`🟢 [Content] appendToBibFile: Failed to add entry ${i + 1}`);
+                }
+
+                // Small delay between entries
+                if (i < entries.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
             }
 
-            const newContent = currentContent.trimEnd() + "\n\n" + request.entries.join("\n\n") + "\n";
-            const success = setEditorContent(newContent);
+            console.log(`🟢 [Content] appendToBibFile: Done. ${successCount}/${entries.length} entries added`);
 
-            // Switch back to main.tex
+            // Switch back to main.tex after a delay
             setTimeout(() => {
+                console.log("🟢 [Content] appendToBibFile: Switching back to main.tex");
                 switchToFile("main.tex");
             }, 500);
 
-            sendResponse({ success: success });
-        });
+            sendResponse({ success: successCount > 0, addedCount: successCount });
+        }, 500); // Initial delay to let file click register
 
         return true; // Keep channel open for async response
         }
